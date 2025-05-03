@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页金句收藏</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>网页金句收藏</h1>
+      <div class="theme-toggle">
+        <input type="checkbox" id="theme-switch" class="theme-switch">
+        <label for="theme-switch" class="theme-switch-label"></label>
+      </div>
+    </header>
+
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="搜索金句...">
+      <button id="search-btn">搜索</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="recent">最近收藏</button>
+      <button class="tab-btn" data-tab="all">全部金句</button>
+      <button class="tab-btn" data-tab="tags">标签</button>
+    </div>
+
+    <div class="tab-content active" id="recent-content">
+      <div class="quotes-container" id="recent-quotes">
+        <!-- 最近收藏的金句将通过JS动态加载 -->
+        <div class="empty-state">暂无收藏的金句</div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="all-content">
+      <div class="quotes-container" id="all-quotes">
+        <!-- 所有金句将通过JS动态加载 -->
+      </div>
+    </div>
+
+    <div class="tab-content" id="tags-content">
+      <div class="tags-container" id="tags-list">
+        <!-- 标签列表将通过JS动态加载 -->
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="add-quote-btn">添加金句</button>
+      <button id="manage-btn">管理金句</button>
+      <button id="settings-btn">设置</button>
+    </div>
+
+    <!-- 添加金句弹窗 -->
+    <div class="modal" id="add-quote-modal">
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>添加金句</h2>
+        <textarea id="quote-text" placeholder="输入金句内容..."></textarea>
+        <input type="text" id="quote-source" placeholder="来源（可选）">
+        <input type="text" id="quote-tags" placeholder="标签（用逗号分隔）">
+        <textarea id="quote-notes" placeholder="笔记（可选）"></textarea>
+        <button id="save-quote-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

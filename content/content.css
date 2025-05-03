@@ -1,0 +1,125 @@
+/**
+ * 网页金句收藏 - 内容样式
+ * 定义在网页中显示的浮动按钮和通知的样式
+ */
+
+/* 浮动按钮样式 */
+.quote-collector-floating-btn {
+  position: fixed;
+  background-color: #4F46E5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.quote-collector-floating-btn:hover {
+  background-color: #7C3AED;
+  transform: translateY(-2px);
+}
+
+/* 通知样式 */
+.quote-collector-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #10B981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(-20px);
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.quote-collector-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 金句收藏弹窗样式 */
+.quote-collector-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 10001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.quote-collector-modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.quote-collector-modal-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.quote-collector-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+}
+
+.quote-collector-modal h2 {
+  margin-bottom: 16px;
+  font-size: 18px;
+  color: #4F46E5;
+}
+
+.quote-collector-modal textarea,
+.quote-collector-modal input {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.quote-collector-modal textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.quote-collector-modal button {
+  padding: 8px 16px;
+  background-color: #4F46E5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.quote-collector-modal button:hover {
+  background-color: #7C3AED;
+}

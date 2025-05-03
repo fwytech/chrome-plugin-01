@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>金句管理 - 网页金句收藏</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="manage.css">
+</head>
+<body>
+  <div class="container manage-container">
+    <header>
+      <h1>金句管理</h1>
+      <div class="theme-toggle">
+        <input type="checkbox" id="theme-switch" class="theme-switch">
+        <label for="theme-switch" class="theme-switch-label"></label>
+      </div>
+    </header>
+
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="搜索金句...">
+      <button id="search-btn">搜索</button>
+    </div>
+
+    <div class="filter-bar">
+      <div class="view-toggle">
+        <button class="view-btn active" data-view="list">列表视图</button>
+        <button class="view-btn" data-view="card">卡片视图</button>
+      </div>
+      <div class="sort-options">
+        <select id="sort-select">
+          <option value="newest">最新添加</option>
+          <option value="oldest">最早添加</option>
+          <option value="az">按文本排序 (A-Z)</option>
+          <option value="za">按文本排序 (Z-A)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tags-filter">
+      <div class="tags-container" id="filter-tags-list">
+        <!-- 标签过滤器将通过JS动态加载 -->
+      </div>
+    </div>
+
+    <div class="quotes-container" id="quotes-list">
+      <!-- 金句列表将通过JS动态加载 -->
+      <div class="empty-state">暂无收藏的金句</div>
+    </div>
+
+    <div class="pagination">
+      <button id="prev-page" disabled>上一页</button>
+      <span id="page-info">第 1 页</span>
+      <button id="next-page" disabled>下一页</button>
+    </div>
+
+    <div class="actions">
+      <button id="add-quote-btn">添加金句</button>
+      <button id="export-btn">导出数据</button>
+      <button id="import-btn">导入数据</button>
+      <button id="back-btn">返回</button>
+    </div>
+
+    <!-- 添加/编辑金句弹窗 -->
+    <div class="modal" id="quote-modal">
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2 id="modal-title">添加金句</h2>
+        <textarea id="quote-text" placeholder="输入金句内容..."></textarea>
+        <input type="text" id="quote-source" placeholder="来源（可选）">
+        <input type="text" id="quote-tags" placeholder="标签（用逗号分隔）">
+        <textarea id="quote-notes" placeholder="笔记（可选）"></textarea>
+        <button id="save-quote-btn">保存</button>
+      </div>
+    </div>
+
+    <!-- 导入/导出弹窗 -->
+    <div class="modal" id="data-modal">
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2 id="data-modal-title">导出数据</h2>
+        
+        <!-- 导出选项 -->
+        <div id="export-options">
+          <div class="format-options">
+            <label>
+              <input type="radio" name="export-format" value="json" checked> JSON 格式
+            </label>
+            <label>
+              <input type="radio" name="export-format" value="csv"> CSV 格式
+            </label>
+          </div>
+          <button id="download-btn">下载数据</button>
+        </div>
+        
+        <!-- 导入选项 -->
+        <div id="import-options">
+          <p>请选择要导入的文件 (JSON 或 CSV 格式)</p>
+          <input type="file" id="import-file" accept=".json,.csv">
+          <div class="import-warning">
+            注意：导入数据将会与现有数据合并。如有重复ID的金句，将会被覆盖。
+          </div>
+          <button id="import-confirm-btn">确认导入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="manage.js"></script>
+</body>
+</html>
