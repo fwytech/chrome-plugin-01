@@ -90,16 +90,17 @@ class ImportExportManager {
    */
   exportAsCSV(quotes) {
     // CSV 表头
-    const headers = ['ID', '内容', '来源', '标签', '笔记', '日期'];
+    const headers = ['ID', '内容', '来源', '标签', '笔记', '创建日期', '更新日期'];
     
     // 转换数据为CSV行
     const rows = quotes.map(quote => [
       quote.id,
       `"${quote.text.replace(/"/g, '""')}"`, // 处理文本中的引号
       quote.source ? `"${quote.source.replace(/"/g, '""')}"` : '',
-      quote.tags ? quote.tags.join(',') : '',
+      quote.tags ? `"${quote.tags.join(',')}"` : '', // 将标签用引号包裹
       quote.notes ? `"${quote.notes.replace(/"/g, '""')}"` : '',
-      quote.date
+      quote.createdAt ? new Date(quote.createdAt).toLocaleString() : '',
+      quote.updatedAt ? new Date(quote.updatedAt).toLocaleString() : ''
     ]);
     
     // 组合CSV内容
@@ -138,131 +139,152 @@ class ImportExportManager {
       alert('请选择要导入的文件');
       return;
     }
-    
-    const fileExt = file.name.split('.').pop().toLowerCase();
-    if (fileExt !== 'json' && fileExt !== 'csv') {
-      alert('只支持导入 JSON 或 CSV 格式的文件');
+
+    // 验证文件格式
+    const validExtensions = ['.json', '.csv'];
+    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!validExtensions.includes(fileExtension)) {
+      alert('不支持的文件格式，请选择 JSON 或 CSV 文件');
       return;
     }
-    
+
     const reader = new FileReader();
-    
     reader.onload = async (e) => {
       try {
-        let importedQuotes = [];
-        
-        if (fileExt === 'json') {
-          importedQuotes = this.parseJSON(e.target.result);
-        } else if (fileExt === 'csv') {
-          importedQuotes = this.parseCSV(e.target.result);
+        let importedData;
+        if (fileExtension === '.json') {
+          importedData = this.parseJSON(e.target.result);
+        } else {
+          importedData = this.parseCSV(e.target.result);
         }
-        
-        if (importedQuotes.length === 0) {
-          alert('导入的文件不包含有效的金句数据');
-          return;
+
+        // 验证导入的数据
+        if (!Array.isArray(importedData)) {
+          throw new Error('导入的数据格式不正确');
         }
-        
+
+        // 验证数据结构
+        const validationErrors = this.validateImportedData(importedData);
+        if (validationErrors.length > 0) {
+          throw new Error(`数据验证失败：\n${validationErrors.join('\n')}`);
+        }
+
         // 合并数据
-        await this.mergeQuotes(importedQuotes);
-        
-        alert(`成功导入 ${importedQuotes.length} 条金句`);
-        this.importFile.value = ''; // 清空文件选择
-        
-        // 调用回调函数更新UI
+        const result = await this.mergeQuotes(importedData);
+
+        // 关闭导入弹窗并刷新数据
+        this.importOptions.style.display = 'none';
         if (this.onDataImported) {
           this.onDataImported();
         }
+
+        alert(`数据导入成功！\n新增：${result.added} 条\n更新：${result.updated} 条\n跳过：${result.skipped} 条`);
       } catch (error) {
-        console.error('导入数据失败:', error);
-        alert('导入数据失败: ' + error.message);
+        alert(`导入失败: ${error.message}`);
       }
     };
-    
-    reader.onerror = () => {
-      alert('读取文件失败');
-    };
-    
-    if (fileExt === 'json') {
-      reader.readAsText(file);
-    } else if (fileExt === 'csv') {
-      reader.readAsText(file);
-    }
+
+    reader.readAsText(file);
   }
 
   /**
    * 解析JSON数据
-   * @param {string} jsonString JSON字符串
-   * @returns {Array} 金句数组
+   * @param {string} jsonStr JSON字符串
+   * @returns {Array} 解析后的金句数组
    */
-  parseJSON(jsonString) {
+  parseJSON(jsonStr) {
     try {
-      const data = JSON.parse(jsonString);
+      const data = JSON.parse(jsonStr);
       if (!Array.isArray(data)) {
-        throw new Error('JSON数据格式不正确，应为数组');
+        throw new Error('JSON数据必须是数组格式');
       }
-      
-      // 验证每个金句对象
-      return data.filter(quote => {
-        return quote && typeof quote === 'object' && quote.text && quote.id;
-      });
+      return data;
     } catch (error) {
-      console.error('解析JSON失败:', error);
-      throw new Error('解析JSON失败: ' + error.message);
+      if (error.message === 'JSON数据必须是数组格式') {
+        throw error;
+      }
+      throw new Error('JSON格式不正确，请检查文件内容');
     }
   }
 
   /**
    * 解析CSV数据
-   * @param {string} csvString CSV字符串
-   * @returns {Array} 金句数组
+   * @param {string} csvStr CSV字符串
+   * @returns {Array} 解析后的金句数组
    */
-  parseCSV(csvString) {
-    try {
-      // 简单的CSV解析
-      const lines = csvString.split('\n');
-      if (lines.length < 2) {
-        throw new Error('CSV数据格式不正确');
+  parseCSV(csvStr) {
+    // 预处理CSV字符串
+    const lines = csvStr.trim().split(/\r?\n/);
+    if (lines.length < 2) {
+      throw new Error('CSV文件必须包含表头和至少一行数据');
+    }
+
+    // 解析表头
+    const headers = this.parseCSVLine(lines[0]);
+    const requiredHeaders = ['内容'];
+    const missingHeaders = requiredHeaders.filter(h => !headers.map(h => h.toLowerCase()).includes(h.toLowerCase()));
+    if (missingHeaders.length > 0) {
+      throw new Error(`CSV文件缺少必需的列：${missingHeaders.join(', ')}`);
+    }
+
+    // 解析数据行
+    const quotes = [];
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      
+      const values = this.parseCSVLine(lines[i]);
+      if (values.length !== headers.length) {
+        console.warn(`跳过第${i + 1}行：列数不匹配`);
+        continue;
       }
-      
-      // 解析表头
-      const headers = this.parseCSVLine(lines[0]);
-      const idIndex = headers.findIndex(h => h.toLowerCase() === 'id');
-      const textIndex = headers.findIndex(h => ['内容', 'text', '金句', 'quote'].includes(h.toLowerCase()));
-      const sourceIndex = headers.findIndex(h => ['来源', 'source'].includes(h.toLowerCase()));
-      const tagsIndex = headers.findIndex(h => ['标签', 'tags'].includes(h.toLowerCase()));
-      const notesIndex = headers.findIndex(h => ['笔记', 'notes'].includes(h.toLowerCase()));
-      const dateIndex = headers.findIndex(h => ['日期', 'date'].includes(h.toLowerCase()));
-      
-      if (textIndex === -1) {
-        throw new Error('CSV数据缺少必要的"内容"列');
-      }
-      
-      // 解析数据行
-      const quotes = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+
+      const quote = {};
+      headers.forEach((header, index) => {
+        let value = values[index].trim();
+        // 如果值被引号包裹，去除引号
+        if (value.startsWith('"') && value.endsWith('"')) {
+          value = value.slice(1, -1).replace(/""/g, '"');
+        }
         
-        const values = this.parseCSVLine(line);
-        if (values.length < headers.length) continue;
-        
-        const quote = {
-          id: values[idIndex] || Date.now().toString(),
-          text: values[textIndex],
-          source: sourceIndex !== -1 ? values[sourceIndex] : '',
-          tags: tagsIndex !== -1 ? values[tagsIndex].split(/[,，]/).map(t => t.trim()).filter(t => t) : [],
-          notes: notesIndex !== -1 ? values[notesIndex] : '',
-          date: dateIndex !== -1 ? values[dateIndex] : new Date().toISOString()
-        };
-        
+        switch (header.toLowerCase()) {
+          case '内容':
+            quote.text = value || '';
+            break;
+          case '来源':
+            quote.source = value || null;
+            break;
+          case '标签':
+            // 处理标签，移除空标签和重复标签
+            quote.tags = value
+              ? [...new Set(value.split(',').map(tag => tag.trim()).filter(Boolean))]
+              : [];
+            break;
+          case '笔记':
+            quote.notes = value || null;
+            break;
+          case '创建日期':
+            try {
+              quote.createdAt = value ? new Date(value.replace(/[年月日]/g, '/')).getTime() : Date.now();
+            } catch {
+              quote.createdAt = Date.now();
+            }
+            break;
+          case '更新日期':
+            try {
+              quote.updatedAt = value ? new Date(value.replace(/[年月日]/g, '/')).getTime() : Date.now();
+            } catch {
+              quote.updatedAt = Date.now();
+            }
+            break;
+        }
+      });
+
+      if (quote.text) {
         quotes.push(quote);
       }
-      
-      return quotes;
-    } catch (error) {
-      console.error('解析CSV失败:', error);
-      throw new Error('解析CSV失败: ' + error.message);
     }
+
+    return quotes;
   }
 
   /**
@@ -300,19 +322,69 @@ class ImportExportManager {
   /**
    * 合并导入的金句数据
    * @param {Array} importedQuotes 导入的金句数组
+   * @returns {Object} 合并结果统计
    */
   async mergeQuotes(importedQuotes) {
     const existingQuotes = await StorageUtils.getAllQuotes();
-    const mergedQuotes = new Map(existingQuotes.map(q => [q.id, q]));
-    
-    // 使用Map进行高效的数据合并
-    importedQuotes.forEach(importedQuote => {
-      if (!importedQuote.id) {
-        importedQuote.id = Date.now().toString();
-      }
-      mergedQuotes.set(importedQuote.id, importedQuote);
+    const result = {
+      added: 0,
+      updated: 0,
+      skipped: 0
+    };
+
+    // 为新数据生成唯一ID和时间戳
+    const processedQuotes = importedQuotes.map(quote => {
+      const now = Date.now();
+      const uniqueId = now.toString() + Math.random().toString(36).substr(2, 5);
+      return {
+        ...quote,
+        id: quote.id || uniqueId,
+        text: (quote.text || '').trim(),
+        source: quote.source ? quote.source.trim() : null,
+        tags: Array.isArray(quote.tags) ? [...new Set(quote.tags.map(tag => tag.trim()).filter(Boolean))] : [],
+        notes: quote.notes ? quote.notes.trim() : null,
+        createdAt: quote.createdAt || now,
+        updatedAt: now
+      };
     });
-    
-    await StorageUtils.saveQuotes(Array.from(mergedQuotes.values()));
+
+    // 合并数据
+    const mergedQuotes = [...existingQuotes];
+    for (const quote of processedQuotes) {
+      // 检查是否存在重复内容（忽略大小写和多余空格）
+      const duplicateIndex = mergedQuotes.findIndex(q => 
+        q.text.trim().toLowerCase() === quote.text.trim().toLowerCase() && 
+        (!q.source && !quote.source || (q.source && quote.source && q.source.trim().toLowerCase() === quote.source.trim().toLowerCase()))
+      );
+
+      if (duplicateIndex === -1) {
+        // 新增金句
+        mergedQuotes.push(quote);
+        result.added++;
+      } else {
+        // 检查是否需要更新
+        const existing = mergedQuotes[duplicateIndex];
+        const hasChanges = 
+          JSON.stringify(existing.tags.sort()) !== JSON.stringify(quote.tags.sort()) ||
+          (existing.notes || '').trim() !== (quote.notes || '').trim();
+
+        if (hasChanges) {
+          // 更新现有金句，保留原有ID
+          mergedQuotes[duplicateIndex] = {
+            ...existing,
+            tags: quote.tags.length > 0 ? quote.tags : existing.tags,
+            notes: quote.notes || existing.notes,
+            updatedAt: Date.now()
+          };
+          result.updated++;
+        } else {
+          result.skipped++;
+        }
+      }
+    }
+
+    // 保存合并后的数据
+    await StorageUtils.saveQuotes(mergedQuotes);
+    return result;
   }
 }
