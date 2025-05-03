@@ -12,6 +12,7 @@ const elements = {
   themeSwitch: document.getElementById('theme-switch'),
   searchInput: document.getElementById('search-input'),
   searchBtn: document.getElementById('search-btn'),
+  deepseekBtn: document.getElementById('deepseek-btn'),
   tabBtns: document.querySelectorAll('.tab-btn'),
   tabContents: document.querySelectorAll('.tab-content'),
   recentQuotes: document.getElementById('recent-quotes'),
@@ -115,6 +116,42 @@ const storage = {
   }
 };
 
+// 初始化事件监听器
+function initEventListeners() {
+  // 绑定DeepSeek总结按钮点击事件
+  elements.deepseekBtn.addEventListener('click', () => ui.handleDeepseekSummary());
+}
+
+// DeepSeek API相关函数
+const deepseekApi = {
+  /**
+   * 调用DeepSeek API进行文本总结
+   * @param {string} text - 需要总结的文本
+   * @returns {Promise<string>} 总结结果
+   */
+  summarizeText: async function(text) {
+    try {
+      const response = await fetch('http://localhost:3000/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text })
+      });
+      
+      if (!response.ok) {
+        throw new Error('API请求失败');
+      }
+      
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('DeepSeek API调用失败:', error);
+      throw error;
+    }
+  }
+};
+
 // 工具函数
 const utils = {
   /**
@@ -154,6 +191,30 @@ const utils = {
 
 // UI 相关函数
 const ui = {
+  /**
+   * 使用DeepSeek进行文本总结
+   */
+  handleDeepseekSummary: async function() {
+    try {
+      const text = elements.searchInput.value;
+      if (!text) {
+        alert('请输入需要总结的文本');
+        return;
+      }
+      
+      elements.deepseekBtn.disabled = true;
+      elements.deepseekBtn.textContent = '正在总结...';
+      
+      const summary = await deepseekApi.summarizeText(text);
+      elements.searchInput.value = summary;
+    } catch (error) {
+      alert('总结失败: ' + error.message);
+    } finally {
+      elements.deepseekBtn.disabled = false;
+      elements.deepseekBtn.textContent = 'DeepSeek R1总结';
+    }
+  },
+
   /**
    * 创建金句元素
    * @param {Object} quote - 金句对象
